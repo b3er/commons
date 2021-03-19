@@ -31,6 +31,7 @@ export type Route = {
   responses: RouteResponse[];
   enabled: boolean;
   randomResponse: boolean;
+  sequentialResponse: boolean;
 };
 
 export type Header = { key: string; value: string };

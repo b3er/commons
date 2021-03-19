@@ -20,7 +20,9 @@ export class ResponseRulesInterpreter {
   constructor(
     private routeResponses: RouteResponse[],
     private request: Request,
-    private randomResponse: boolean
+    private randomResponse: boolean,
+    private sequentialResponse: boolean,
+    private sequenceNumber: number
   ) {
     this.extractTargets();
   }
@@ -36,6 +38,8 @@ export class ResponseRulesInterpreter {
       );
 
       return this.routeResponses[randomStatus];
+    } else if (this.sequentialResponse) {
+      return this.routeResponses[this.sequenceNumber];
     } else {
       let response = this.routeResponses.find((routeResponse) =>
         routeResponse.rulesOperator === 'AND'

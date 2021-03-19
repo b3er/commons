@@ -45,10 +45,9 @@ import {
  *
  * Extends EventEmitter.
  */
-export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
-  ServerEvents
->) {
+export class MockoonServer extends (EventEmitter as new () => TypedEmitter<ServerEvents>) {
   private serverInstance: httpServer | httpsServer;
+  private routeSequences = new Map<string, number>();
 
   constructor(
     private environment: Environment,
@@ -205,7 +204,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
           } else if (
             requestContentType.includes('application/x-www-form-urlencoded')
           ) {
-            request.bodyForm = qsParse(request.body, { depth: 10 });
+            request.bodyForm = qsParse(request.body, {depth: 10});
           }
         }
       } catch (error) {
@@ -293,11 +292,25 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
                 return;
               }
 
+              let sequenceNumber = this.routeSequences.get(currentRoute.uuid) || 0;
+
               const enabledRouteResponse = new ResponseRulesInterpreter(
                 currentRoute.responses,
                 request,
-                currentRoute.randomResponse
+                currentRoute.randomResponse,
+                currentRoute.sequentialResponse,
+                sequenceNumber
               ).chooseResponse();
+
+              // Increase sequence number for route
+              if (currentRoute.sequentialResponse) {
+                if (sequenceNumber >= currentRoute.responses.length - 1) {
+                  sequenceNumber = 0;
+                } else {
+                  sequenceNumber++;
+                }
+                this.routeSequences.set(currentRoute.uuid, sequenceNumber);
+              }
 
               // save route and response UUIDs for logs (only in desktop app)
               if (declaredRoute.uuid && enabledRouteResponse.uuid) {
@@ -341,7 +354,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
                     if (!enabledRouteResponse.sendFileAsBody) {
                       response.set(
                         'Content-Disposition',
-                        `attachment; filename="${basename(filePath)}"`
+                        `attachment; filename="${ basename(filePath) }"`
                       );
                     }
 
@@ -375,7 +388,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
 
                         this.sendError(
                           response,
-                          `${Texts.EN.MESSAGES.ROUTE_FILE_SERVING_ERROR}${error.message}`
+                          `${ Texts.EN.MESSAGES.ROUTE_FILE_SERVING_ERROR }${ error.message }`
                         );
                       }
                     });
@@ -403,7 +416,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
 
                   this.sendError(
                     response,
-                    `${Texts.EN.MESSAGES.ROUTE_SERVING_ERROR}${error.message}`
+                    `${ Texts.EN.MESSAGES.ROUTE_SERVING_ERROR }${ error.message }`
                   );
                 }
               }, enabledRouteResponse.latency);
@@ -468,7 +481,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
           secure: false,
           changeOrigin: true,
           logProvider: this.options.logProvider,
-          ssl: { ...DefaultSSLConfig, agent: false },
+          ssl: {...DefaultSSLConfig, agent: false},
           onProxyReq: (
             proxyReq: ClientRequest,
             request: Request,
@@ -519,7 +532,7 @@ export class MockoonServer extends (EventEmitter as new () => TypedEmitter<
             this.emit('error', ServerErrorCodes.PROXY_ERROR, error);
             this.sendError(
               response,
-              `${Texts.EN.MESSAGES.PROXY_ERROR}${this.environment.proxyHost}${request.url}: ${error}`,
+              `${ Texts.EN.MESSAGES.PROXY_ERROR }${ this.environment.proxyHost }${ request.url }: ${ error }`,
               504
             );
           }
